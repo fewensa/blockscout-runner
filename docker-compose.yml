@@ -4,8 +4,8 @@ services:
   postgres:
     image: postgres:16-alpine
     restart: always
-    ports:
-      - 35432:5432
+    #ports:
+    #  - 35432:5432
     volumes:
       - ${WORK_DIR}/data/postgres:/var/lib/postgresql/data
     environment:
@@ -26,8 +26,8 @@ services:
     depends_on:
       - postgres
       - redis
-    ports:
-      - 4000:4000
+    #ports:
+    #  - 4000:4000
     env_file:
       - ${WORK_DIR}/config/${PROFILE}/backend.env
     environment:
@@ -63,8 +63,8 @@ services:
       POSTGRES_DB: 'stats'
       POSTGRES_USER: 'stats'
       POSTGRES_PASSWORD: ${BLOCKSCOUT_STATS_DB_PASSWORD:-n0uejXPl61ci6ldCuE2gQU5Y}
-    ports:
-      - 7433:5432
+    #ports:
+    #  - 7433:5432
     volumes:
       - ${WORK_DIR}/data/stats-db-data:/var/lib/postgresql/data
     healthcheck:
