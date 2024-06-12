@@ -21,6 +21,7 @@ services:
 
   backend:
     image: blockscout/blockscout:${VISUALIZER_DOCKER_TAG:-latest}
+    restart: always
     #pull_policy: always
     depends_on:
       - postgres
@@ -108,6 +109,7 @@ services:
 
   proxy:
     image: nginx:1.27-alpine
+    restart: always
     depends_on:
       - backend
       - frontend
