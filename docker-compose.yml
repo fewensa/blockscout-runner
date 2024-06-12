@@ -7,7 +7,7 @@ services:
     ports:
       - 35432:5432
     volumes:
-      - ${WORK_DIR}/.data/postgres:/var/lib/postgresql/data
+      - ${WORK_DIR}/data/postgres:/var/lib/postgresql/data
     environment:
       POSTGRES_DB: 'blockscout'
       POSTGRES_USER: 'blockscout'
@@ -17,7 +17,7 @@ services:
     image: redis:7.2-alpine
     restart: always
     volumes:
-      - ${WORK_DIR}/.data/redis:/data
+      - ${WORK_DIR}/data/redis:/data
 
   backend:
     image: blockscout/blockscout:${VISUALIZER_DOCKER_TAG:-latest}
@@ -33,7 +33,7 @@ services:
     environment:
       DATABASE_URL: ${BACKEND_DATABASE_URL:-postgresql://blockscout:blockscout@postgres:5432/blockscout?ssl=false}
     volumes:
-      - ${WORK_DIR}/.data/logs:/app/logs/
+      - ${WORK_DIR}/data/logs:/app/logs/
     command: sh -c "bin/blockscout eval \"Elixir.Explorer.ReleaseTasks.create_and_migrate()\" && bin/blockscout start"
 
   visualizer:
@@ -66,7 +66,7 @@ services:
     ports:
       - 7433:5432
     volumes:
-      - ${WORK_DIR}/.data/stats-db-data:/var/lib/postgresql/data
+      - ${WORK_DIR}/data/stats-db-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U stats -d stats"]
       interval: 10s
