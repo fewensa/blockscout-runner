@@ -2,27 +2,24 @@ version: "3.9"
 
 services:
   postgres:
-    container_name: blockscout-postgres
     image: postgres:16-alpine
     restart: always
     ports:
       - 35432:5432
     volumes:
-      - .data/postgres:/var/lib/postgresql/data
+      - ${WORK_DIR}/.data/postgres:/var/lib/postgresql/data
     environment:
       POSTGRES_DB: 'blockscout'
       POSTGRES_USER: 'blockscout'
-      POSTGRES_PASSWORD: 'blockscout'
+      POSTGRES_PASSWORD: ${BLOCKSCOUT_DB_PASSWORD:-blockscout}
 
   redis:
-    container_name: blockscout-redis
     image: redis:7.2-alpine
     restart: always
     volumes:
-      - .data/redis:/data
+      - ${WORK_DIR}/.data/redis:/data
 
   backend:
-    container_name: blockscout-backend
     image: blockscout/blockscout:${VISUALIZER_DOCKER_TAG:-latest}
     #pull_policy: always
     depends_on:
@@ -31,16 +28,14 @@ services:
     ports:
       - 4000:4000
     env_file:
-      - config/darwinia/backend.env
+      - ${WORK_DIR}/config/${PROFILE}/backend.env
+    environment:
+      DATABASE_URL: ${BACKEND_DATABASE_URL:-postgresql://blockscout:blockscout@postgres:5432/blockscout?ssl=false}
     volumes:
-      - .data/logs:/app/logs/
-#    command: sh -c "bin/blockscout eval \"Elixir.Explorer.ReleaseTasks.create_and_migrate()\""
-#    command: sh -c "bin/blockscout start"
+      - ${WORK_DIR}/.data/logs:/app/logs/
     command: sh -c "bin/blockscout eval \"Elixir.Explorer.ReleaseTasks.create_and_migrate()\" && bin/blockscout start"
-#    command: sh -c "bin/blockscout -h"
 
   visualizer:
-    container_name: blockscout-visualizer
     image: ghcr.io/blockscout/visualizer:${VISUALIZER_DOCKER_TAG:-latest}
 #    pull_policy: always
     restart: always
@@ -48,31 +43,13 @@ services:
       VISUALIZER__SERVER__GRPC__ENABLED: false
 
   frontend:
-    container_name: blockscout-frontend
     depends_on:
       - backend
     image: ghcr.io/blockscout/frontend:${FRONTEND_DOCKER_TAG:-latest}
 #    pull_policy: always
     restart: always
     env_file:
-      - config/darwinia/frontend.env
-
-  proxy:
-    container_name: blockscout-proxy
-    image: nginx:1.27-alpine
-    depends_on:
-      - backend
-      - frontend
-#      - stats
-    volumes:
-      - ./proxy:/etc/nginx/templates
-    environment:
-      BACK_PROXY_PASS: ${BACK_PROXY_PASS:-http://backend:4000}
-      FRONT_PROXY_PASS: ${FRONT_PROXY_PASS:-http://frontend:3000}
-    ports:
-      - 2280:80
-      - 2380:8080
-      - 2381:8081
+      - ${WORK_DIR}/config/${PROFILE}/frontend.env
 
 
 
@@ -80,16 +57,15 @@ services:
     image: postgres:16-alpine
     shm_size: 256m
     restart: always
-    container_name: blockscout-stats-db
     command: postgres -c 'max_connections=200'
     environment:
       POSTGRES_DB: 'stats'
       POSTGRES_USER: 'stats'
-      POSTGRES_PASSWORD: 'n0uejXPl61ci6ldCuE2gQU5Y'
+      POSTGRES_PASSWORD: ${BLOCKSCOUT_STATS_DB_PASSWORD:-n0uejXPl61ci6ldCuE2gQU5Y}
     ports:
       - 7433:5432
     volumes:
-      - .data/stats-db-data:/var/lib/postgresql/data
+      - ${WORK_DIR}/.data/stats-db-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U stats -d stats"]
       interval: 10s
@@ -105,9 +81,8 @@ services:
     pull_policy: always
     platform: linux/amd64
     restart: always
-    container_name: blockscout-stats
     env_file:
-      - config/darwinia/stats.env
+      - ${WORK_DIR}/config/${PROFILE}/stats.env
     environment:
       - STATS__DB_URL=${STATS__DB_URL:-postgres://stats:n0uejXPl61ci6ldCuE2gQU5Y@stats-db:5432/stats}
       - STATS__BLOCKSCOUT_DB_URL=${STATS__BLOCKSCOUT_DB_URL:-postgresql://blockscout:blockscout@postgres:5432/blockscout}
@@ -122,12 +97,30 @@ services:
     pull_policy: always
     platform: linux/amd64
     restart: always
-    container_name: 'user-ops-indexer'
     env_file:
-      - config/darwinia/user-ops-indexer.env
+      - ${WORK_DIR}/config/${PROFILE}/user-ops-indexer.env
     environment:
       - USER_OPS_INDEXER__INDEXER__RPC_URL=${USER_OPS_INDEXER__INDEXER__RPC_URL:-wss://rpc.darwinia.network/}
-      - USER_OPS_INDEXER__DATABASE__CONNECT__URL=${USER_OPS_INDEXER__DATABASE__CONNECT__URL:-postgresql://blockscout:blockscout@db:5432/blockscout}
+      - USER_OPS_INDEXER__DATABASE__CONNECT__URL=${USER_OPS_INDEXER__DATABASE__CONNECT__URL:-postgresql://blockscout:blockscout@postgres:5432/blockscout}
       - USER_OPS_INDEXER__DATABASE__RUN_MIGRATIONS=true
+
+
+
+  proxy:
+    image: nginx:1.27-alpine
+    depends_on:
+      - backend
+      - frontend
+      - stats
+    volumes:
+      - ${WORK_DIR}/proxy:/etc/nginx/templates
+    environment:
+      BACK_PROXY_PASS: ${BACK_PROXY_PASS:-http://backend:4000}
+      FRONT_PROXY_PASS: ${FRONT_PROXY_PASS:-http://frontend:3000}
+    ports:
+      - ${FRONTEND_PORT:-80}:80
+      - ${STATS_PORT:-8080}:8080
+      - ${VISUALIZER_PORT:-8081}:8081
+
 
 
