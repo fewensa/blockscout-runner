@@ -22,7 +22,7 @@ services:
   backend:
     image: blockscout/blockscout:${VISUALIZER_DOCKER_TAG:-latest}
     restart: always
-    #pull_policy: always
+    pull_policy: always
     depends_on:
       - postgres
       - redis
@@ -38,7 +38,7 @@ services:
 
   visualizer:
     image: ghcr.io/blockscout/visualizer:${VISUALIZER_DOCKER_TAG:-latest}
-#    pull_policy: always
+    pull_policy: always
     restart: always
     environment:
       VISUALIZER__SERVER__GRPC__ENABLED: false
@@ -47,7 +47,7 @@ services:
     depends_on:
       - backend
     image: ghcr.io/blockscout/frontend:${FRONTEND_DOCKER_TAG:-latest}
-#    pull_policy: always
+    pull_policy: always
     restart: always
     env_file:
       - ${WORK_DIR}/config/${PROFILE}/frontend.env
@@ -79,7 +79,7 @@ services:
       - stats-db
       - backend
     image: ghcr.io/blockscout/stats:${STATS_DOCKER_TAG:-latest}
-    # pull_policy: always
+    pull_policy: always
     platform: linux/amd64
     restart: always
     env_file:
@@ -95,7 +95,7 @@ services:
       - postgres
       - backend
     image: ghcr.io/blockscout/user-ops-indexer:${USER_OPS_INDEXER_DOCKER_TAG:-latest}
-    # pull_policy: always
+    pull_policy: always
     platform: linux/amd64
     restart: always
     env_file:
@@ -104,7 +104,6 @@ services:
       - USER_OPS_INDEXER__INDEXER__RPC_URL=${USER_OPS_INDEXER__INDEXER__RPC_URL:-wss://rpc.darwinia.network/}
       - USER_OPS_INDEXER__DATABASE__CONNECT__URL=${USER_OPS_INDEXER__DATABASE__CONNECT__URL:-postgresql://blockscout:blockscout@postgres:5432/blockscout}
       - USER_OPS_INDEXER__DATABASE__RUN_MIGRATIONS=true
-
 
 
   proxy:
