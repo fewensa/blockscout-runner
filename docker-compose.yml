@@ -35,6 +35,11 @@ services:
     volumes:
       - ${WORK_DIR}/data/logs:/app/logs/
     command: sh -c "bin/blockscout eval \"Elixir.Explorer.ReleaseTasks.create_and_migrate()\" && bin/blockscout start"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "3072m"
+        max-file: "1"
 
   visualizer:
     image: ghcr.io/blockscout/visualizer:${VISUALIZER_DOCKER_TAG:-latest}
