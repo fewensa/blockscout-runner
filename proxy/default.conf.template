@@ -9,9 +9,7 @@ server {
     server_name  localhost;
     proxy_http_version 1.1;
 
-    client_max_body_size 20m;
-
-    location ~ ^/(api|socket|sitemap.xml|auth/auth0|auth/auth0/callback|auth/logout) {
+    location ~ ^/(api(?!-docs$)|socket|sitemap.xml|auth/auth0|auth/auth0/callback|auth/logout) {
         proxy_pass            ${BACK_PROXY_PASS};
         proxy_http_version    1.1;
         proxy_set_header      Host "$host";
@@ -32,12 +30,6 @@ server {
         proxy_set_header      Upgrade "$http_upgrade";
         proxy_set_header      Connection $connection_upgrade;
         proxy_cache_bypass    $http_upgrade;
-
-        ### "*5 upstream sent too big header while reading response header from upstream" issue
-
-        proxy_buffer_size 16k;
-        proxy_buffers 32 16k;
-        proxy_busy_buffers_size 64k;
     }
 }
 server {
