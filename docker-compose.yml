@@ -1,8 +1,12 @@
-version: "3.9"
-
 services:
+  redis:
+    image: redis:8.0-alpine
+    restart: always
+    volumes:
+      - ${WORK_DIR}/data/redis:/data
+
   postgres:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     restart: always
     #ports:
     #  - 35432:5432
@@ -13,16 +17,11 @@ services:
       POSTGRES_USER: 'blockscout'
       POSTGRES_PASSWORD: ${BLOCKSCOUT_DB_PASSWORD:-blockscout}
 
-  redis:
-    image: redis:7.2-alpine
-    restart: always
-    volumes:
-      - ${WORK_DIR}/data/redis:/data
-
   backend:
-    image: blockscout/blockscout:${VISUALIZER_DOCKER_TAG:-latest}
+    image: ghcr.io/blockscout/${DOCKER_REPO:-blockscout}:${DOCKER_TAG:-latest}
     restart: always
     pull_policy: always
+    stop_grace_period: 5m
     depends_on:
       - postgres
       - redis
@@ -30,16 +29,35 @@ services:
     #  - 4000:4000
     env_file:
       - ${WORK_DIR}/config/${PROFILE}/backend.env
+      - ${WORK_DIR}/.backend.local.env
     environment:
       DATABASE_URL: ${BACKEND_DATABASE_URL:-postgresql://blockscout:blockscout@postgres:5432/blockscout?ssl=false}
     volumes:
       - ${WORK_DIR}/data/logs:/app/logs/
+      - ${WORK_DIR}/data/dets:/app/dets/
     command: sh -c "bin/blockscout eval \"Elixir.Explorer.ReleaseTasks.create_and_migrate()\" && bin/blockscout start"
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
     logging:
       driver: "json-file"
       options:
         max-size: "3072m"
         max-file: "1"
+
+  nft_media_handler:
+    depends_on:
+      - backend
+    image: ghcr.io/blockscout/${DOCKER_REPO:-blockscout}:${DOCKER_TAG:-latest}
+    pull_policy: always
+    restart: always
+    stop_grace_period: 5m
+    command: sh -c "bin/blockscout start"
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    volumes:
+      - ${WORK_DIR}/data/logs:/app/logs/
+    env_file:
+      - ${WORK_DIR}/config/${PROFILE}/nft-media-handler.env
 
   visualizer:
     image: ghcr.io/blockscout/visualizer:${VISUALIZER_DOCKER_TAG:-latest}
@@ -47,6 +65,12 @@ services:
     restart: always
     environment:
       VISUALIZER__SERVER__GRPC__ENABLED: false
+
+  sig-provider:
+    image: ghcr.io/blockscout/sig-provider:${SIG_PROVIDER_DOCKER_TAG:-latest}
+    pull_policy: always
+    restart: always
+
 
   frontend:
     depends_on:
@@ -56,11 +80,12 @@ services:
     restart: always
     env_file:
       - ${WORK_DIR}/config/${PROFILE}/frontend.env
+      - ${WORK_DIR}/.frontend.local.env
 
 
 
   stats-db:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     shm_size: 256m
     restart: always
     command: postgres -c 'max_connections=200'
@@ -87,6 +112,8 @@ services:
     pull_policy: always
     platform: linux/amd64
     restart: always
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
     env_file:
       - ${WORK_DIR}/config/${PROFILE}/stats.env
     environment:
@@ -104,6 +131,8 @@ services:
     pull_policy: always
     platform: linux/amd64
     restart: always
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
     env_file:
       - ${WORK_DIR}/config/${PROFILE}/user-ops-indexer.env
     environment:
@@ -119,6 +148,8 @@ services:
       - backend
       - frontend
       - stats
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
     volumes:
       - ${WORK_DIR}/proxy:/etc/nginx/templates
     environment:
