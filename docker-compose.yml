@@ -6,7 +6,7 @@ services:
       - ${WORK_DIR}/data/redis:/data
 
   postgres:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     restart: always
     #ports:
     #  - 35432:5432
